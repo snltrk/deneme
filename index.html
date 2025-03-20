@@ -4,32 +4,158 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Parfüm Botu Web App</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@telegram/web-apps@1.0.0/dist/index.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
             background-color: var(--tg-theme-bg-color);
             color: var(--tg-theme-text-color);
         }
+        
+        .container {
+            max-width: 400px;
+            margin: 20px auto;
+            padding: 20px;
+            border-radius: 10px;
+            background-color: var(--tg-theme-bg-color-alt);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 10px;
+        }
+        
+        input {
+            width: 100%;
+            height: 30px;
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid var(--tg-theme-border-color);
+            border-radius: 5px;
+        }
+        
+        button {
+            width: 100%;
+            height: 40px;
+            background-color: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background-color: var(--tg-theme-button-hover-color);
+        }
     </style>
 </head>
 <body>
-    <h1>Parfüm Botu Web App</h1>
-    <p>Merhaba! Bu parfüm botu için bir Web App örneğidir.</p>
-    
-    <button id="closeButton">Web App'ı Kapat</button>
+    <div class="container">
+        <h2>Parfüm Hesaplama</h2>
+        <form id="perfumeForm">
+            <label for="essenceName">Esans Adı:</label>
+            <input type="text" id="essenceName" required>
+            
+            <label for="volume">Parfüm Hacmi (mL):</label>
+            <input type="number" id="volume" required>
+            
+            <label for="ratio">Kütlesel Esans Oranı (%):</label>
+            <input type="number" id="ratio" required>
+            
+            <label for="waterRatio">Su Oranı (%):</label>
+            <input type="number" id="waterRatio">
+            
+            <label for="alcoholDegree">Alkol Derecesi (%):</label>
+            <input type="number" id="alcoholDegree" required>
+            
+            <button type="submit">Hesapla</button>
+        </form>
+        
+        <div id="result"></div>
+    </div>
     
     <script>
         // Telegram Web App API'sini kullanma
         const TelegramWebApp = window.TelegramWebApp;
         
-        // Web App'ı kapatma butonuna tıklandığında
-        document.getElementById('closeButton').addEventListener('click', () => {
-            TelegramWebApp.close();
-        });
-        
         // Web App hazır olduğunda
         TelegramWebApp.ready();
+        
+        // Form submit eventini dinle
+        document.getElementById('perfumeForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Girdileri al
+            const essenceName = document.getElementById('essenceName').value;
+            const volume = parseFloat(document.getElementById('volume').value);
+            const ratio = parseFloat(document.getElementById('ratio').value) / 100;
+            const waterRatio = parseFloat(document.getElementById('waterRatio').value || 0) / 100;
+            const alcoholDegree = parseFloat(document.getElementById('alcoholDegree').value);
+            
+            // Hesaplamaları yap
+            const result = calculateResults(essenceName, volume, ratio, waterRatio, alcoholDegree);
+            
+            // Sonuçları göster
+            document.getElementById('result').innerHTML = result;
+        });
+        
+        // Hesaplama fonksiyonu
+        function calculateResults(essenceName, volume, ratio, waterRatio, alcoholDegree) {
+            // Esans yoğunluğunu varsayalım (örnek olarak 0.9 g/mL)
+            const essenceDensity = 0.9;
+            
+            // Alkol yoğunluğunu hesapla
+            const alcoholDensity = (alcoholDegree / 100) * 0.797 + (1 - alcoholDegree / 100) * 1;
+            
+            // Oranları hesapla
+            const alcoholRatio = 1 - ratio - waterRatio;
+            
+            // Parfümün ortalama yoğunluğunu hesapla
+            const averageDensity = 1 / (((1 - ratio - waterRatio) / alcoholDensity) + (ratio / essenceDensity) + (waterRatio / 1));
+            
+            // Toplam ağırlığı hesapla
+            const totalMass = volume * averageDensity;
+            
+            // Kütlesel değerleri hesapla
+            const essenceMass = totalMass * ratio;
+            const alcoholMass = totalMass * alcoholRatio;
+            const waterMass = totalMass * waterRatio;
+            
+            // Hacimsel değerleri hesapla
+            const essenceVolume = parseFloat((essenceMass / essenceDensity).toFixed(2));
+            const alcoholVolume = parseFloat((alcoholMass / alcoholDensity).toFixed(2));
+            const waterVolume = parseFloat((waterMass * 1).toFixed(2));
+            
+            // Toplam hacmi doğrula
+            const totalVolume = parseFloat((essenceVolume + alcoholVolume + waterVolume).toFixed(2));
+            
+            // Final alkol derecesini hesapla
+            const finalAlcoholPercentage = parseFloat((alcoholVolume * alcoholDegree / totalVolume).toFixed(2));
+            
+            // Sonuçları düzenle
+            const resultMessage = `
+                <h3>Hesaplama Sonuçları</h3>
+                <p><b>Esans:</b> ${essenceName}</p>
+                <p><b>Kütlesel Değerler:</b></p>
+                <ul>
+                    <li>Esans: ${essenceMass.toFixed(2)} g</li>
+                    <li>Alkol: ${alcoholMass.toFixed(2)} g</li>
+                    <li>Su: ${waterMass.toFixed(2)} g</li>
+                    <li>Toplam Ağırlık: ${totalMass.toFixed(2)} g</li>
+                </ul>
+                <p><b>Hacimsel Değerler:</b></p>
+                <ul>
+                    <li>Esans: ${essenceVolume} mL</li>
+                    <li>Alkol: ${alcoholVolume} mL</li>
+                    <li>Su: ${waterVolume} mL</li>
+                    <li>Toplam Hacim: ${totalVolume} mL</li>
+                </ul>
+                <p><b>Final Alkol Derecesi:</b> %${finalAlcoholPercentage}</p>
+            `;
+            
+            return resultMessage;
+        }
     </script>
 </body>
 </html>
